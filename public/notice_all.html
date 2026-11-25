@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rollybot Monitoring</title>
+<style>
+  :root {
+    --bg: #f3f5f7;
+    --card: #ffffff;
+    --text: #1d2733;
+    --muted: #66727f;
+    --line: #d5dbe1;
+    --accent: #1f6feb;
+    --accent-text: #ffffff;
+    --danger: #c0392b;
+    --ok: #1a7f4b;
+    --warn: #b7791f;
+    --track: #e3e8ed;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181d;
+      --card: #1d232a;
+      --text: #e6ebf0;
+      --muted: #93a0ad;
+      --line: #333c46;
+      --accent: #4c8dff;
+      --accent-text: #0b1220;
+      --danger: #ff7b6b;
+      --ok: #4fd18b;
+      --warn: #e6b450;
+      --track: #2b333c;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    line-height: 1.5;
+    padding: 24px 16px;
+  }
+  main {
+    max-width: 980px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px;
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  h2 { font-size: 1rem; margin: 24px 0 8px; }
+  p.sub { margin: 0 0 20px; color: var(--muted); font-size: .9rem; }
+  label.field { display: block; font-weight: 600; margin-bottom: 6px; }
+  textarea {
+    display: block;
+    width: calc(22.3em + 26px);  /* 한글 36글자 + 좌우 여백(24px)·테두리(2px) */
+    max-width: 100%;             /* 화면이 좁으면 화면 폭에 맞춤 */
+    margin: 0 auto;              /* 카드 가운데 배치 */
+    height: calc(5 * 1.5em + 26px);
+    resize: none;
+    overflow: hidden;
+    padding: 12px;
+    font: inherit;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  textarea:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 16px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    flex: 1 1 200px;
+  }
+  button:disabled { opacity: .55; cursor: default; }
+  label.auto { margin-left: auto; font-size: .9rem; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 760px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.name .n { font-weight: 600; white-space: nowrap; }
+  td.name .h { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+  td.pstate { min-width: 170px; }
+  td.pstate .badge { font-weight: 700; }
+  td.pstate .sm { color: var(--muted); font-size: .8rem; word-break: break-all; }
+  td.temps { white-space: nowrap; }
+  td.temps .sm { color: var(--muted); font-size: .8rem; }
+  td.cur { max-width: 200px; white-space: pre-wrap; word-break: break-word; }
+  td.cur.empty { color: var(--muted); }
+  td.sync { white-space: nowrap; }
+  .bar { height: 6px; background: var(--track); border-radius: 3px; margin: 4px 0 2px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+  .c-ok { color: var(--ok); }
+  .c-err { color: var(--danger); }
+  .c-warn { color: var(--warn); }
+  .c-acc { color: var(--accent); }
+  .c-muted { color: var(--muted); }
+  #summary { margin-top: 14px; min-height: 1.5em; font-size: .9rem; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 24px 0 8px; }
+  .head h2 { margin: 0; }
+  .head button { padding: 6px 12px; font-size: .85rem; }
+  #editor { margin: 0 0 16px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .lbl { font-weight: 600; margin-bottom: 8px; }
+  .erow { display: grid; grid-template-columns: auto 1fr 1.4fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .erow input[type=text] {
+    width: 100%; padding: 8px 10px; font: inherit; color: var(--text);
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .erow input[type=text].bad { border-color: var(--danger); }
+  .erow .ename {
+    padding: 8px 10px; color: var(--muted); font-size: .9rem;
+    background: var(--track); border-radius: 8px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .erow .ename.got { color: var(--text); font-weight: 600; }
+  #editor .row { margin-top: 4px; }
+  #editor-msg { min-height: 1.4em; margin-top: 8px; font-size: .85rem; }
+  #cfg-dialog { width: min(680px, 92vw); max-height: 88vh; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); }
+  #cfg-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  .dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+  #cfg-dialog #cfg { margin: 0; padding: 0; border: 0; background: none; }
+  #cfg {  margin-top: 24px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  #cfg h2 { margin: 0 0 10px; }
+  #cfg input[type=file] { font: inherit; color: var(--text); max-width: 100%; min-width: 0; }
+  .frow { display: grid; grid-template-columns: 1.2fr auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .frow input[type=text], .frow select {
+    width: 100%; padding: 8px 10px; font: inherit; color: var(--text);
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .frow button { padding: 8px 12px; font-size: .85rem; }
+  @media (max-width: 640px) { .frow { grid-template-columns: 1fr 1fr; } }
+  #cfg .row { margin-top: 8px; }
+  .opt { display: flex; gap: 6px; align-items: center; font-size: .9rem; color: var(--muted); }
+  #cfg-result { margin-top: 10px; font-size: .88rem; }
+  #cfg-result div { padding: 3px 0; border-bottom: 1px solid var(--line); }
+  #cfg-result div:last-child { border-bottom: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>[ Delta Square 프린터 모니터링 및 공지사항 전달 ]</h1>
+  <p class="sub">입력한 문구를 선택한 프린터 모두에 한 번에 저장합니다. 프린터 상태는 자동으로 갱신됩니다.</p>
+
+  <label class="field" for="text">공지 문구 (전체 공통)</label>
+  <textarea id="text" placeholder="비워 두고 적용하면 모든 프린터에서 공지가 표시되지 않습니다"></textarea>
+  <p class="hint">최대 5줄까지 입력할 수 있습니다. 줄바꿈은 Enter로 입력합니다. 작은따옴표(')와 큰따옴표(")는 ’ ”로, 세미콜론(;)은 쉼표로 바뀌어 저장됩니다.</p>
+
+  <div class="row">
+    <button id="apply" class="primary" disabled>선택한 프린터에 적용</button>
+    <button id="clear" disabled>문구 지우기(전체)</button>
+    <button id="refresh" disabled>지금 새로고침</button>
+    <label class="auto"><input type="checkbox" id="auto" checked> 20초마다 자동 갱신</label>
+  </div>
+
+  <div id="summary" role="status"></div>
+
+  <div class="head">
+    <h2>프린터</h2>
+    <button id="edit-list" type="button">프린터 목록 편집</button>
+  </div>
+
+  <div id="editor" hidden>
+    <div class="lbl">프린터 목록</div>
+    <div id="erows"></div>
+    <div class="row">
+      <button id="e-add" type="button">+ 프린터 추가</button>
+      <button id="e-del" type="button">선택 삭제</button>
+    </div>
+    <p class="hint">주소(IP)만 입력하면 됩니다. 프린터 이름은 연결되면 자동으로 가져와 표시되며 편집할 수 없습니다. 새로 추가한 줄은 몇 번째인지 알 수 있도록 프린터1, 프린터2… 순번이 표시됩니다. 왼쪽 체크박스로 고른 줄을 삭제할 수 있고, 주소가 비어 있는 줄은 저장할 때 제외됩니다. 포트가 다르면 192.168.0.11:7125 처럼 적으세요. 이 목록은 이 브라우저에 저장됩니다.</p>
+    <div class="row">
+      <button id="plist-save" class="primary" type="button">저장</button>
+      <button id="plist-cancel" type="button">취소</button>
+    </div>
+    <div id="editor-msg" role="status"></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="check-all" checked aria-label="전체 선택"></th>
+          <th>프린터</th>
+          <th>출력 상태</th>
+          <th>온도</th>
+          <th>현재 공지</th>
+          <th>공지 동기화</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="row" style="margin-top:16px"><button id="cfg-open" type="button">zip 파일 올리기…</button></div>
+
+  <dialog id="cfg-dialog">
+    <div id="cfg">
+      <div class="dlg-head"><h2>zip 파일 올리기</h2><button id="cfg-close" type="button">닫기</button></div>
+      <label class="field" for="cfg-zip">올릴 zip 파일 선택 (예: pi.zip)</label>
+      <input type="file" id="cfg-zip" accept=".zip">
+      <div id="cfg-info" class="hint"></div>
+      <p class="hint">선택한 zip 파일을, 위 표에서 체크한 프린터의 config 폴더에 올립니다. (Mainsail의 Machine 탭에서 올리는 것과 같은 방식입니다.) zip 안의 첫 폴더가 pi이고, 그 아래 구조가 프린터의 /home/pi 아래 경로와 같아야 합니다. 올리기가 끝나면 관리자가 PuTTY로 각 프린터에 접속해 안내되는 명령으로 압축을 풉니다. 백업은 하지 않으며, 기존 파일은 새 파일로 바뀝니다.</p>
+      <div class="row">
+        <button id="cfg-send" class="primary" type="button" disabled>선택한 프린터에 zip 올리기</button>
+      </div>
+      <div id="cfg-result" role="status"></div>
+    </div>
+  </dialog>
+</main>
+
+<script>
+(function () {
+  // ===== 기본 프린터 목록 =====
+  // 처음 열 때만 쓰는 기본값입니다. 평소에는 화면의 "프린터 목록 편집"에서 바꾸면 되고,
+  // 바꾼 목록은 이 브라우저에 저장되어 이 기본값보다 우선합니다.
+  // name: 프린터 이름을 가져오지 못할 때만 쓰는 대체 이름입니다.
+  //       (평소에는 Mainsail/Fluidd에 설정된 이름 → 호스트 이름 순으로 자동 표시)
+  // host: IP 또는 호스트 이름. Mainsail/Fluidd 웹 주소(포트 80)와 같게 적으면 됩니다.
+  // Moonraker 포트를 직접 쓰려면 "192.168.0.11:7125" 처럼 포트를 붙이세요.
+  // 비어 있으면 처음 열 때 "프린터 1" 입력칸 하나만 나타납니다.
+  var PRINTERS = [];
+  var VAR_NAME = "notice_text";
+  var MAX_LINES = 5;
+  var TIMEOUT_MS = 6000;
+  var POLL_MS = 20000;
+
+  // print_stats.state 표시 (라벨, 색상)
+  var STATE_MAP = {
+    standby:   ["대기",     "c-muted"],
+    printing:  ["출력 중",  "c-acc"],
+    paused:    ["일시정지", "c-warn"],
+    complete:  ["완료",     "c-ok"],
+    cancelled: ["취소됨",   "c-muted"],
+    error:     ["오류",     "c-err"]
+  };
+
+  var QUERY = "/printer/objects/query?save_variables=variables&print_stats&virtual_sdcard&extruder&heater_bed&webhooks";
+
+  var ta = document.getElementById("text");
+  var btnApply = document.getElementById("apply");
+  var btnClear = document.getElementById("clear");
+  var btnRefresh = document.getElementById("refresh");
+  var autoEl = document.getElementById("auto");
+  var checkAll = document.getElementById("check-all");
+  var rowsEl = document.getElementById("rows");
+  var summaryEl = document.getElementById("summary");
+  var editorEl = document.getElementById("editor");
+  var erowsEl = document.getElementById("erows");
+  var editorMsg = document.getElementById("editor-msg");
+  var btnEditList = document.getElementById("edit-list");
+  var cfgSend = document.getElementById("cfg-send");
+  var cfgClose = document.getElementById("cfg-close");
+  var cfgDialog = document.getElementById("cfg-dialog");
+  var cfgResult = document.getElementById("cfg-result");
+  var busy = false;
+  var pollTimer = null;
+
+  function makeState(list) { return list.map(function (p) {
+    return {
+      name: p.name, host: p.host, checked: true,
+      conn: "wait", err: "",
+      remoteName: "", nameTried: false, nameEl: null,
+      text: null, pstate: null, file: "", progress: null, dur: null,
+      ext: null, bed: null, klippy: "", kmsg: "",
+      sync: { cls: "c-muted", msg: "-" },
+      check: null, cells: null
+    };
+  }); }
+
+  var STORE_KEY = "notice_all_printers";
+  var state = [];
+
+  function loadList() {
+    try {
+      var s = localStorage.getItem(STORE_KEY);
+      if (s) {
+        var a = JSON.parse(s);
+        if (Array.isArray(a)) return a;
+      }
+    } catch (e) {}
+    return PRINTERS;
+  }
+
+  function saveList(list) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); return true; }
+    catch (e) { return false; }
+  }
+
+  function base(p) {
+    return /^https?:\/\//.test(p.host) ? p.host : "http://" + p.host;
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function buildTable() {
+    rowsEl.textContent = "";
+    state.forEach(function (p) {
+      var tr = document.createElement("tr");
+
+      var tdCheck = document.createElement("td");
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = true;
+      cb.setAttribute("aria-label", p.name + " 선택");
+      cb.addEventListener("change", function () { p.checked = cb.checked; syncCheckAll(); });
+      tdCheck.appendChild(cb);
+      p.check = cb;
+
+      var tdName = el("td", "name");
+      p.nameEl = el("div", "n", p.name);
+      tdName.appendChild(p.nameEl);
+      tdName.appendChild(el("div", "h", p.host));
+
+      p.cells = {
+        pstate: el("td", "pstate"),
+        temps: el("td", "temps"),
+        cur: el("td", "cur"),
+        sync: el("td", "sync")
+      };
+
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdName);
+      tr.appendChild(p.cells.pstate);
+      tr.appendChild(p.cells.temps);
+      tr.appendChild(p.cells.cur);
+      tr.appendChild(p.cells.sync);
+      rowsEl.appendChild(tr);
+      render(p);
+    });
+  }
+
+  function fmtTime(sec) {
+    sec = Math.max(0, Math.round(sec));
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    return h > 0 ? h + "시간 " + m + "분" : m + "분";
+  }
+
+  function fmtTemp(t) {
+    if (!t || t.temperature == null) return null;
+    var cur = Math.round(t.temperature);
+    var tgt = t.target != null ? Math.round(t.target) : 0;
+    return cur + " / " + tgt + "°C";
+  }
+
+  function renderPState(p) {
+    var c = p.cells.pstate;
+    c.textContent = "";
+    if (p.conn === "wait") { c.appendChild(el("span", "c-muted", "확인 중...")); return; }
+    if (p.conn === "err") { c.appendChild(el("span", "c-err", "연결 실패: " + p.err)); return; }
+
+    if (p.klippy && p.klippy !== "ready") {
+      c.appendChild(el("div", "badge c-err", "Klipper " + p.klippy));
+      if (p.kmsg) c.appendChild(el("div", "sm", p.kmsg));
+      return;
+    }
+
+    var m = STATE_MAP[p.pstate] || [p.pstate || "-", "c-muted"];
+    c.appendChild(el("div", "badge " + m[1], m[0]));
+
+    if (p.file && (p.pstate === "printing" || p.pstate === "paused" || p.pstate === "complete")) {
+      c.appendChild(el("div", "sm", p.file));
+    }
+    if ((p.pstate === "printing" || p.pstate === "paused") && p.progress != null) {
+      var pct = Math.max(0, Math.min(100, p.progress * 100));
+      var bar = el("div", "bar");
+      var fill = document.createElement("i");
+      fill.style.width = pct.toFixed(1) + "%";
+      bar.appendChild(fill);
+      c.appendChild(bar);
+      var info = pct.toFixed(0) + "%";
+      if (p.dur != null) info += " · 경과 " + fmtTime(p.dur);
+      if (p.dur != null && p.progress > 0.02 && p.pstate === "printing") {
+        info += " · 남은 약 " + fmtTime(p.dur / p.progress - p.dur);
+      }
+      c.appendChild(el("div", "sm", info));
+    }
+  }
+
+  function renderTemps(p) {
+    var c = p.cells.temps;
+    c.textContent = "";
+    if (p.conn !== "ok") { c.appendChild(el("span", "c-muted", "-")); return; }
+    var e = fmtTemp(p.ext), b = fmtTemp(p.bed);
+    var l1 = el("div"); l1.appendChild(el("span", "sm", "노즐 ")); l1.appendChild(document.createTextNode(e || "-"));
+    var l2 = el("div"); l2.appendChild(el("span", "sm", "베드 ")); l2.appendChild(document.createTextNode(b || "-"));
+    c.appendChild(l1);
+    c.appendChild(l2);
+  }
+
+  function renderCur(p) {
+    var c = p.cells.cur;
+    if (p.conn !== "ok" || p.text === null) { c.textContent = "-"; c.className = "cur empty"; }
+    else if (p.text === "") { c.textContent = "(비어 있음)"; c.className = "cur empty"; }
+    else { c.textContent = p.text; c.className = "cur"; }
+  }
+
+  function render(p) {
+    p.nameEl.textContent = p.remoteName || p.name;
+    renderPState(p);
+    renderTemps(p);
+    renderCur(p);
+    p.cells.sync.textContent = p.sync.msg;
+    p.cells.sync.className = "sync " + p.sync.cls;
+  }
+
+  function syncCheckAll() {
+    checkAll.checked = state.every(function (p) { return p.checked; });
+  }
+
+  checkAll.addEventListener("change", function () {
+    state.forEach(function (p) { p.checked = checkAll.checked; p.check.checked = checkAll.checked; });
+  });
+
+  function setBusy(b) {
+    busy = b;
+    btnApply.disabled = b;
+    btnClear.disabled = b;
+    btnRefresh.disabled = b;
+    ta.disabled = b;
+    cfgSend.disabled = b;
+    cfgClose.disabled = b;
+  }
+
+  function withTimeout(url, opts) {
+    var ctrl = new AbortController();
+    var t = setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS);
+    opts = opts || {};
+    opts.signal = ctrl.signal;
+    return fetch(url, opts).finally(function () { clearTimeout(t); });
+  }
+
+  function errText(e) {
+    if (e && e.name === "AbortError") return "응답 없음";
+    return (e && e.message) ? e.message : "오류";
+  }
+
+  // 프린터 한 대의 정보를 읽어 state에 반영
+  async function fetchInfo(p) {
+    try {
+      var res = await withTimeout(base(p) + QUERY);
+      if (!res.ok) {
+        // Klipper가 꺼져 있거나 오류 상태일 때 서버 정보로 상태 확인
+        if (res.status === 503) {
+          try {
+            var r2 = await withTimeout(base(p) + "/server/info");
+            var d2 = (await r2.json()).result;
+            p.conn = "ok"; p.err = "";
+            p.klippy = d2.klippy_state || "disconnected";
+            p.kmsg = "";
+            p.pstate = null; p.progress = null; p.ext = null; p.bed = null; p.text = null;
+            return;
+          } catch (_) {}
+        }
+        throw new Error("HTTP " + res.status);
+      }
+      var st = (await res.json()).result.status;
+      var ps = st.print_stats || {};
+      var vs = st.virtual_sdcard || {};
+      var wh = st.webhooks || {};
+
+      p.conn = "ok"; p.err = "";
+      p.klippy = wh.state || "";
+      p.kmsg = wh.state_message || "";
+      p.pstate = ps.state || null;
+      p.file = ps.filename || "";
+      p.dur = ps.print_duration != null ? ps.print_duration : null;
+      p.progress = vs.progress != null ? vs.progress : null;
+      p.ext = st.extruder || null;
+      p.bed = st.heater_bed || null;
+      if (st.save_variables) {
+        var v = st.save_variables.variables[VAR_NAME];
+        p.text = v == null ? "" : String(v);
+      } else {
+        p.text = null;
+      }
+    } catch (e) {
+      p.conn = "err"; p.err = errText(e);
+      p.text = null;
+    }
+  }
+
+  // 프린터 이름 가져오기: Mainsail 이름 → Fluidd 이름 → 호스트 이름 순
+  async function fetchName(p) {
+    var b = base(p);
+    async function dbItem(ns, key) {
+      var r = await withTimeout(b + "/server/database/item?namespace=" + ns + "&key=" + key);
+      if (!r.ok) return "";
+      var v = (await r.json()).result.value;
+      return typeof v === "string" ? v.trim() : "";
+    }
+    try {
+      var n = await dbItem("mainsail", "general.printername");
+      if (!n) n = await dbItem("fluidd", "uiSettings.general.instanceName");
+      if (!n) {
+        var r = await withTimeout(b + "/printer/info");
+        if (r.ok) n = ((await r.json()).result.hostname || "").trim();
+      }
+      if (n) p.remoteName = n;
+      p.nameTried = true;
+    } catch (e) {
+      // 연결 문제면 다음 갱신 때 다시 시도
+    }
+  }
+
+  async function writeOne(p, clean) {
+    var script = 'SAVE_VARIABLE VARIABLE=' + VAR_NAME + ' VALUE="\'' + clean + '\'"';
+    var res = await withTimeout(base(p) + "/printer/gcode/script", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ script: script })
+    });
+    if (!res.ok) {
+      var m = "";
+      try { m = (await res.json()).error.message; } catch (_) {}
+      throw new Error(m || "HTTP " + res.status);
+    }
+  }
+
+  function sanitize(s) {
+    return s
+      .replace(/\r\n?/g, "\n")
+      .replace(/'/g, "\u2019")
+      .replace(/"/g, "\u201d")
+      .replace(/;/g, ",")
+      .replace(/\\/g, "/")
+      .replace(/\n/g, "\\n")
+      .trim();
+  }
+
+  // 5줄 초과 입력을 잘라냄 (Enter 줄바꿈 + 긴 문장의 자동 줄바꿈 모두 포함)
+  function limitLines() {
+    var lines = ta.value.replace(/\r\n?/g, "\n").split("\n");
+    if (lines.length > MAX_LINES) {
+      ta.value = lines.slice(0, MAX_LINES).join("\n");
+    }
+    while (ta.value.length > 0 && ta.scrollHeight > ta.clientHeight + 1) {
+      ta.value = ta.value.slice(0, -1);
+    }
+  }
+
+  // 불러온 문구를 입력칸에 채움
+  function applyValue(v) {
+    ta.value = v == null ? "" : String(v);
+    limitLines();
+  }
+
+  // 입력 문구와 프린터에 저장된 문구 비교
+  function markDiffs() {
+    var target = sanitize(ta.value).replace(/\\n/g, "\n");
+    state.forEach(function (p) {
+      if (p.conn !== "ok") { p.sync = { cls: "c-muted", msg: "-" }; }
+      else if (p.text === null) { p.sync = { cls: "c-err", msg: "save_variables 없음" }; }
+      else if (p.text === target) { p.sync = { cls: "c-ok", msg: "최신" }; }
+      else { p.sync = { cls: "c-warn", msg: "다름" }; }
+      render(p);
+    });
+  }
+
+  function updateSummary(extra) {
+    var okN = state.filter(function (p) { return p.conn === "ok"; }).length;
+    var failN = state.length - okN;
+    var printing = state.filter(function (p) { return p.conn === "ok" && p.pstate === "printing"; }).length;
+    var bad = state.filter(function (p) {
+      return p.conn === "ok" && ((p.klippy && p.klippy !== "ready") || p.pstate === "error");
+    }).length;
+
+    var msg = okN + "/" + state.length + "대 연결됨 · 출력 중 " + printing + "대";
+    if (bad) msg += " · 오류 " + bad + "대";
+    if (failN) msg += " · 연결 실패 " + failN + "대";
+
+    var texts = {};
+    state.forEach(function (p) { if (p.conn === "ok" && p.text !== null) texts[p.text] = 1; });
+    if (Object.keys(texts).length > 1) msg += " · 프린터마다 공지 문구가 다릅니다";
+
+    if (extra) msg = extra + "  |  " + msg;
+    summaryEl.className = (failN || bad) ? "c-err" : "";
+    summaryEl.textContent = msg;
+  }
+
+  async function loadAll(fillInput, withNames) {
+    await Promise.all(state.map(fetchInfo));
+    // 이름은 거의 바뀌지 않으므로 처음(또는 못 가져온 프린터)만 조회
+    await Promise.all(state.map(function (p) {
+      if (p.conn === "ok" && (withNames || !p.nameTried)) return fetchName(p);
+    }));
+
+    if (fillInput) {
+      // 가장 많이 쓰이는 문구를 입력칸에 채움
+      var counts = {};
+      state.forEach(function (p) {
+        if (p.conn === "ok" && p.text !== null) counts[p.text] = (counts[p.text] || 0) + 1;
+      });
+      var best = null, bestN = 0;
+      Object.keys(counts).forEach(function (k) { if (counts[k] > bestN) { best = k; bestN = counts[k]; } });
+      if (best !== null) applyValue(best);
+    }
+    markDiffs();
+  }
+
+  // 수동/최초 새로고침
+  async function refresh(fillInput) {
+    setBusy(true);
+    summaryEl.className = "";
+    summaryEl.textContent = "불러오는 중...";
+    state.forEach(function (p) { p.conn = "wait"; render(p); });
+    await loadAll(fillInput, true);
+    updateSummary();
+    setBusy(false);
+  }
+
+  // 자동 갱신 (화면 깜빡임 없이 값만 갱신)
+  async function poll() {
+    if (busy || document.hidden || !state.length) return;
+    busy = true;
+    try {
+      await loadAll(false);
+      updateSummary();
+    } finally {
+      busy = false;
+    }
+  }
+
+  function setupPoll() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (autoEl.checked) pollTimer = setInterval(poll, POLL_MS);
+  }
+
+  // 선택한 프린터에 저장
+  async function applyAll(text) {
+    var targets = state.filter(function (p) { return p.checked; });
+    if (!targets.length) {
+      summaryEl.className = "c-err";
+      summaryEl.textContent = "적용할 프린터를 선택하세요.";
+      return;
+    }
+    if (text === "" && !confirm("선택한 " + targets.length + "대의 공지 문구를 모두 비웁니다. 계속할까요?")) return;
+
+    setBusy(true);
+    summaryEl.className = "";
+    summaryEl.textContent = "저장 중...";
+    var clean = sanitize(text);
+    var done = 0, fail = 0;
+
+    targets.forEach(function (p) { p.sync = { cls: "c-muted", msg: "저장 중..." }; render(p); });
+
+    await Promise.all(targets.map(async function (p) {
+      try {
+        await writeOne(p, clean);
+        await fetchInfo(p);   // 실제 저장된 값을 다시 읽어 확인
+        if (p.conn !== "ok") throw new Error(p.err || "확인 실패");
+        p.sync = { cls: "c-ok", msg: "저장됨" };
+        done++;
+      } catch (e) {
+        p.sync = { cls: "c-err", msg: "실패: " + errText(e) };
+        fail++;
+      }
+      render(p);
+    }));
+
+    updateSummary(done + "대 저장 완료" + (fail ? ", " + fail + "대 실패 (실패한 프린터는 다시 적용하세요)" : ""));
+    if (fail) summaryEl.className = "c-err";
+    else summaryEl.className = "c-ok";
+    setBusy(false);
+  }
+
+  // ===== zip 파일 올리기 =====
+  var cfgZip = document.getElementById("cfg-zip");
+  var cfgInfo = document.getElementById("cfg-info");
+  var MAX_ZIP = 300 * 1024 * 1024;
+
+  async function errMsg(res) {
+    try { return (await res.json()).error.message; } catch (_) { return "HTTP " + res.status; }
+  }
+
+  function zipCheck() {
+    var f = cfgZip.files[0];
+    if (!f) return { ok: false, msg: "올릴 zip 파일을 먼저 선택하세요." };
+    if (!/\.zip$/i.test(f.name)) return { ok: false, msg: "확장자가 .zip인 파일만 올릴 수 있습니다." };
+    if (/[\s'"\\]/.test(f.name)) return { ok: false, msg: "파일 이름에 공백이나 따옴표가 있으면 안 됩니다. (예: pi.zip)" };
+    if (f.size > MAX_ZIP) return { ok: false, msg: "파일이 300MB를 넘습니다." };
+    return { ok: true, file: f, mb: (f.size / 1048576).toFixed(1) };
+  }
+
+  cfgZip.addEventListener("change", function () {
+    var c = zipCheck();
+    cfgInfo.className = "hint " + (c.ok ? "c-ok" : "c-err");
+    cfgInfo.textContent = c.ok ? c.file.name + " (" + c.mb + "MB)를 프린터의 config 폴더로 올립니다." : c.msg;
+  });
+
+  async function pushZip(p, f) {
+    await fetchInfo(p);
+    if (p.conn !== "ok") throw new Error(p.err || "연결 실패");
+    var ctrl = new AbortController();
+    var t = setTimeout(function () { ctrl.abort(); }, 60000 + (f.size / 1048576) * 5000);
+    try {
+      var fd = new FormData();
+      fd.append("root", "config");
+      fd.append("file", f, f.name);
+      var r = await fetch(base(p) + "/server/files/upload", { method: "POST", body: fd, signal: ctrl.signal });
+      if (!r.ok) throw new Error("업로드 실패 (" + await errMsg(r) + ")");
+    } finally { clearTimeout(t); }
+    return "올림";
+  }
+
+  async function sendZip() {
+    cfgResult.textContent = "";
+    function say(cls, msg) { cfgResult.appendChild(el("div", cls, msg)); }
+    var c = zipCheck();
+    if (!c.ok) { say("c-err", c.msg); return; }
+    var targets = state.filter(function (p) { return p.checked; });
+    if (!targets.length) { say("c-err", "위 표에서 올릴 프린터를 선택하세요."); return; }
+    if (!confirm("선택한 " + targets.length + "대의 config 폴더에 " + c.file.name + " (" + c.mb + "MB)를 올립니다.\n같은 이름의 파일이 있으면 바뀝니다.\n\n계속할까요?")) return;
+
+    setBusy(true);
+    say("c-muted", "올리는 중...");
+    var ok = 0, fail = 0, res = [];
+    await Promise.all(targets.map(async function (p) {
+      var name = p.remoteName || p.name;
+      try { res.push([name, "c-ok", await pushZip(p, c.file)]); ok++; }
+      catch (e) { res.push([name, "c-err", "실패: " + errText(e)]); fail++; }
+    }));
+
+    cfgResult.textContent = "";
+    say(fail ? "c-err" : "c-ok", ok + "대 완료" + (fail ? ", " + fail + "대 실패" : ""));
+    res.sort(function (x, y) { return x[0] < y[0] ? -1 : 1; });
+    res.forEach(function (r) { say(r[1], r[0] + " — " + r[2]); });
+    if (ok > 0) {
+      var n = c.file.name;
+      say("c-muted", "다음 단계: 각 프린터에 PuTTY로 접속해 아래를 입력하면 /home 아래로 풀립니다. (기존 파일은 백업 없이 새 파일로 바뀝니다. sudo는 쓰지 마세요.)");
+      say("c-muted", "cd ~/printer_data/config");
+      say("c-muted", "unzip -l " + n + "    (선택: 풀릴 파일 미리보기)");
+      say("c-muted", "unzip -o " + n + " -d /home/");
+      say("c-muted", "rm " + n + "    (정리)");
+    }
+    setBusy(false);
+  }
+
+  cfgSend.addEventListener("click", sendZip);
+  document.getElementById("cfg-open").addEventListener("click", function () { cfgDialog.showModal(); });
+  cfgClose.addEventListener("click", function () { cfgDialog.close(); });
+  cfgDialog.addEventListener("cancel", function (e) { if (busy) e.preventDefault(); }); // 올리는 중에는 Esc로 닫히지 않게
+
+  // ===== 프린터 목록 편집 =====
+  function addRow(name, host, focus) {
+    var row = el("div", "erow");
+    var sel = document.createElement("input");
+    sel.type = "checkbox";
+    sel.className = "esel";
+    sel.setAttribute("aria-label", "삭제할 줄 선택");
+    // 이름은 프린터에서 자동으로 가져오는 값이라 편집할 수 없음 (읽기 전용 표시)
+    // 가져온 이름이 있으면 그 이름, 없으면 순번(프린터1, 프린터2...)을 표시 (renumber에서 채움)
+    var n = el("div", "ename" + (name ? " got" : ""), name || "");
+    var h = document.createElement("input");
+    h.type = "text"; h.className = "ehost"; h.value = host || "";
+    h.placeholder = "IP 또는 주소 (예: 192.168.0.11)";
+    h.addEventListener("input", function () { h.classList.remove("bad"); });
+    row.appendChild(sel);
+    row.appendChild(n);
+    row.appendChild(h);
+    erowsEl.appendChild(row);
+    renumber();
+    if (focus) h.focus();
+  }
+
+  // 이름을 못 가져온(새로 추가한) 줄에 줄 순서대로 "프린터1, 프린터2..." 표시
+  function renumber() {
+    var rows = erowsEl.querySelectorAll(".erow");
+    Array.prototype.forEach.call(rows, function (r, i) {
+      var n = r.querySelector(".ename");
+      if (!n.classList.contains("got")) n.textContent = "프린터 " + (i + 1);
+    });
+  }
+
+  function openEditor() {
+    erowsEl.textContent = "";
+    editorMsg.textContent = "";
+    state.forEach(function (p) { addRow(p.remoteName, p.host); });
+    if (!state.length) addRow("", "");
+    editorEl.hidden = false;
+  }
+
+  function deleteSelected() {
+    var rows = Array.prototype.slice.call(erowsEl.querySelectorAll(".erow"));
+    var picked = rows.filter(function (r) { return r.querySelector(".esel").checked; });
+    if (!picked.length) {
+      editorMsg.className = "c-err";
+      editorMsg.textContent = "삭제할 줄을 먼저 선택하세요.";
+      return;
+    }
+    picked.forEach(function (r) { r.remove(); });
+    if (!erowsEl.querySelector(".erow")) addRow("", "");
+    renumber();
+    editorMsg.className = "c-muted";
+    editorMsg.textContent = picked.length + "줄 삭제됨 (저장을 눌러야 반영됩니다)";
+  }
+
+  function closeEditor() {
+    editorEl.hidden = true;
+  }
+
+  // 편집 화면의 줄들을 목록으로 변환. 주소가 비어 있는 줄은 제외, 공백이 든 주소는 오류
+  function collectList() {
+    var list = [], bad = [];
+    var rows = erowsEl.querySelectorAll(".erow");
+    Array.prototype.forEach.call(rows, function (row, i) {
+      var hIn = row.querySelector(".ehost");
+      var host = hIn.value.trim().replace(/\/+$/, "");
+      hIn.classList.remove("bad");
+      if (!host) return;
+      if (/\s/.test(host)) { hIn.classList.add("bad"); bad.push(i + 1); return; }
+      // 이름은 연결 후 자동으로 가져오므로, 연결 전 표시용으로 주소를 임시 이름으로 사용
+      list.push({ name: host, host: host });
+    });
+    return { list: list, bad: bad };
+  }
+
+  function applyList(list) {
+    state = makeState(list);
+    buildTable();
+    syncCheckAll();
+    if (!list.length) {
+      summaryEl.className = "c-err";
+      summaryEl.textContent = "등록된 프린터가 없습니다. '프린터 목록 편집'에서 추가하세요.";
+      return Promise.resolve();
+    }
+    return refresh(!ta.value);
+  }
+
+  btnEditList.addEventListener("click", function () {
+    if (editorEl.hidden) openEditor(); else closeEditor();
+  });
+
+  document.getElementById("plist-cancel").addEventListener("click", closeEditor);
+
+  document.getElementById("e-add").addEventListener("click", function () {
+    editorMsg.textContent = "";
+    addRow("", "", true);
+  });
+
+  document.getElementById("e-del").addEventListener("click", deleteSelected);
+
+  document.getElementById("plist-save").addEventListener("click", function () {
+    var r = collectList();
+    if (r.bad.length) {
+      editorMsg.className = "c-err";
+      editorMsg.textContent = r.bad.join(", ") + "번째 줄의 주소에 공백이 있습니다. 확인해 주세요.";
+      return;
+    }
+    var saved = saveList(r.list);
+    closeEditor();
+    applyList(r.list).then(function () {
+      if (!saved) {
+        summaryEl.className = "c-err";
+        summaryEl.textContent = "이 브라우저에 목록을 저장하지 못했습니다. 페이지를 닫으면 사라집니다.  |  " + summaryEl.textContent;
+      }
+    });
+  });
+
+  btnApply.addEventListener("click", function () { applyAll(ta.value); });
+  btnClear.addEventListener("click", function () { ta.value = ""; applyAll(""); });
+  btnRefresh.addEventListener("click", function () { refresh(false); });
+  autoEl.addEventListener("change", setupPoll);
+  ta.addEventListener("input", function () { limitLines(); markDiffs(); });
+
+  state = makeState(loadList());
+  buildTable();
+  if (state.length) {
+    refresh(true);
+  } else {
+    summaryEl.className = "c-err";
+    summaryEl.textContent = "등록된 프린터가 없습니다. 아래에서 프린터 목록을 입력하세요.";
+    openEditor();
+  }
+  setupPoll();
+})();
+</script>
+</body>
+</html>
