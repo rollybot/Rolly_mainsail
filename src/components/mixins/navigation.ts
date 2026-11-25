@@ -53,7 +53,8 @@ export default class NavigationMixin extends Mixins(BaseMixin) {
 
                 points.push({
                     type: 'route',
-                    title: this.$t(`Router.${element.title}`),
+                    //title: this.$t(`Router.${element.title}`),    edited by rollybot
+					title: element.title === 'Update' ? 'Update 관리' : this.$t(`Router.${element.title}`),
                     orgTitle: element.title,
                     icon: element.icon,
                     to: element.path,

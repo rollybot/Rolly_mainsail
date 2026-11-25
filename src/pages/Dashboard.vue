@@ -121,36 +121,48 @@ import WebcamPanel from '@/components/panels/WebcamPanel.vue'
     },
 })
 export default class PageDashboard extends Mixins(DashboardMixin) {
+    // 허용할 패널 컴포넌트 태그 이름 (Webcam 포함 4개 등록, Status는 template에 고정됨)
+    private allowedPanels = ['toolhead-control-panel', 'temperature-panel', 'miniconsole-panel', 'webcam-panel']
+
+    private filterPanels(panels: any[]): any[] {
+        if (!panels) return []
+        return panels.filter(panel => {
+            if (!panel || !panel.name) return false
+            const panelTagName = this.extractPanelName(panel.name)
+            return this.allowedPanels.includes(panelTagName)
+        })
+    }
+
     get mobileLayout() {
-        return this.$store.getters['gui/getPanels']('mobile', 0, true)
+        return this.filterPanels(this.$store.getters['gui/getPanels']('mobile', 0, true))
     }
 
     get tabletLayout1() {
-        return this.$store.getters['gui/getPanels']('tablet', 1, true)
+        return this.filterPanels(this.$store.getters['gui/getPanels']('tablet', 1, true))
     }
 
     get tabletLayout2() {
-        return this.$store.getters['gui/getPanels']('tablet', 2, true)
+        return this.filterPanels(this.$store.getters['gui/getPanels']('tablet', 2, true))
     }
 
     get desktopLayout1() {
-        return this.$store.getters['gui/getPanels']('desktop', 1, true)
+        return this.filterPanels(this.$store.getters['gui/getPanels']('desktop', 1, true))
     }
 
     get desktopLayout2() {
-        return this.$store.getters['gui/getPanels']('desktop', 2, true)
+        return this.filterPanels(this.$store.getters['gui/getPanels']('desktop', 2, true))
     }
 
     get widescreenLayout1() {
-        return this.$store.getters['gui/getPanels']('widescreen', 1, true)
+        return this.filterPanels(this.$store.getters['gui/getPanels']('widescreen', 1, true))
     }
 
     get widescreenLayout2() {
-        return this.$store.getters['gui/getPanels']('widescreen', 2, true)
+        return this.filterPanels(this.$store.getters['gui/getPanels']('widescreen', 2, true))
     }
 
     get widescreenLayout3() {
-        return this.$store.getters['gui/getPanels']('widescreen', 3, true)
+        return this.filterPanels(this.$store.getters['gui/getPanels']('widescreen', 3, true))
     }
 
     extractPanelName(name: string) {

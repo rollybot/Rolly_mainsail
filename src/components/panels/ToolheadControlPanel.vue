@@ -90,12 +90,17 @@
         <v-container v-if="axisControlVisible">
             <component :is="`${controlStyle}-control`" />
         </v-container>
-        <!-- Z-OFFSET CONTROL -->
+
+        <!-- ❌ Z-OFFSET CONTROL 제거 (HTML 주석 처리 완료) -->
+        <!--
         <v-divider v-if="showZOffset" />
         <v-container v-if="showZOffset">
             <zoffset-control />
         </v-container>
-        <!-- SPEED FACTOR -->
+        -->
+
+        <!-- ❌ SPEED FACTOR 제거 (HTML 주석 처리 완료) -->
+        <!--
         <v-divider v-if="showSpeedFactor" />
         <v-container v-if="showSpeedFactor">
             <tool-slider
@@ -111,6 +116,7 @@
                 command="M220"
                 attribute-name="S" />
         </v-container>
+        -->
     </panel>
 </template>
 

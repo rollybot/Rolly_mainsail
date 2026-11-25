@@ -11,10 +11,13 @@
                     v-bind="attrs"
                     v-on="on">
                     <v-list-item-icon class="my-3 mr-3 menu-item-icon">
-                        <v-icon>{{ icon }}</v-icon>
+                        <v-icon :color="isUpdateMenu ? '#616161' : ''">{{ icon }}</v-icon>
                     </v-list-item-icon>
                     <v-list-item-content>
-                        <v-list-item-title tile class="menu-item-title">
+                        <v-list-item-title
+                            tile
+                            class="menu-item-title"
+                            :style="isUpdateMenu ? { color: '#616161' } : {}">
                             {{ title }}
                         </v-list-item-title>
                     </v-list-item-content>
@@ -68,6 +71,10 @@ export default class SidebarItem extends Mixins(BaseMixin) {
         if (this.item.target === '_blank' || !this.item.to) return false
 
         return this.$route.path === this.item.to
+    }
+
+    get isUpdateMenu(): boolean {
+        return this.to === '/config'
     }
 
     get itemClass() {

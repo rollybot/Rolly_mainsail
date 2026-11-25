@@ -1,5 +1,5 @@
 import { GetterTree } from 'vuex'
-import { GuiPresetsHeaterPreset, GuiPresetsState, GuiPresetsStatePreset } from '@/store/gui/presets/types'
+import { GuiPresetsState, GuiPresetsStatePreset } from '@/store/gui/presets/types'
 import { caseInsensitiveSort } from '@/plugins/helpers'
 import { RootState } from '@/store/types'
 
@@ -20,32 +20,43 @@ export const getters: GetterTree<GuiPresetsState, RootState> = {
         return caseInsensitiveSort(presets, 'name')
     },
 
-    getPresetsFromHeater:
-        (state) =>
-        (payload: { name: string }): GuiPresetsHeaterPreset[] => {
-            const output: GuiPresetsHeaterPreset[] = [{ value: 0, text: '0 °C' }]
+    getPresetsFromHeater: (state) => (payload: { name: string }) => {
+        interface preset {
+            value: number
+            text: string
+        }
 
-            // return only 0 entry, if there is no presets set
-            if (!('presets' in state)) return output
+        const output: preset[] = []
 
-            Object.values(state.presets).forEach((preset) => {
-                const heater = preset.values[payload.name]
-                if (!heater?.bool) return
+        output.push({
+            value: 0,
+            text: '0 °C',
+        })
 
-                const value = Number(heater.value ?? 0)
-                if (isNaN(value)) return
+        // return only 0 entry, if there is no presets set
+        if (!('presets' in state)) return output
 
-                const existsAlready = output.some((entry) => entry.value === value)
-                if (existsAlready) return
+        Object.keys(state.presets).forEach((id: string) => {
+            const preset = state.presets[id]
 
-                output.push({ value, text: `${value} °C` })
-            })
+            if (
+                preset.values[payload.name]?.bool &&
+                output.findIndex(
+                    (entry: preset) => entry.value === parseFloat(preset.values[payload.name]?.value?.toString() ?? '0')
+                ) === -1
+            ) {
+                output.push({
+                    value: Number(preset.values[payload.name].value),
+                    text: preset.values[payload.name].value + ' °C',
+                })
+            }
+        })
 
-            return output.sort((a, b) => {
-                if (a.value > b.value) return -1
-                if (a.value < b.value) return 1
+        return output.sort((a: preset, b: preset) => {
+            if (a.value > b.value) return -1
+            if (a.value < b.value) return 1
 
-                return 0
-            })
-        },
+            return 0
+        })
+    },
 }

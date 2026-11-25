@@ -6,6 +6,7 @@ import Files from '../pages/Files.vue'
 import History from '../pages/History.vue'
 import Timelapse from '../pages/Timelapse.vue'
 import Machine from '../pages/Machine.vue'
+import NoticeView from '../pages/NoticeView.vue'
 import { AsyncComponent, Component } from 'vue'
 
 import {
@@ -18,6 +19,7 @@ import {
     mdiHistory,
     mdiTimelapse,
     mdiWrench,
+	mdiBulletinBoard,
 } from '@mdi/js'
 
 const routes: AppRoute[] = [
@@ -31,6 +33,7 @@ const routes: AppRoute[] = [
         showInNavi: true,
         position: 10,
     },
+	/*
     {
         name: 'farm',
         title: 'Printers',
@@ -72,6 +75,7 @@ const routes: AppRoute[] = [
         klipperComponent: 'bed_mesh',
         position: 40,
     },
+	*/
     {
         name: 'gcodefiles',
         title: 'G-Code Files',
@@ -84,6 +88,7 @@ const routes: AppRoute[] = [
         position: 50,
         fullscreen: true,
     },
+	/*
     {
         name: 'gcodeviewer',
         title: 'G-Code Viewer',
@@ -106,6 +111,7 @@ const routes: AppRoute[] = [
         moonrakerComponent: 'history',
         position: 70,
     },
+	*/
     {
         name: 'timelapse',
         title: 'Timelapse',
@@ -119,7 +125,7 @@ const routes: AppRoute[] = [
     },
     {
         name: 'machine',
-        title: 'Machine',
+        title: 'Update',
         path: '/config',
         icon: mdiWrench,
         component: Machine,
@@ -127,6 +133,18 @@ const routes: AppRoute[] = [
         showInNavi: true,
         position: 90,
     },
+	/*
+	{
+        name: 'notice',
+        title: 'Notice',
+        path: '/notice',
+        icon: mdiBulletinBoard,
+        component: NoticeView,
+        alwaysShow: true,
+        showInNavi: true,
+        position: 95,
+    },
+	*/
     {
         title: null,
         component: null,
