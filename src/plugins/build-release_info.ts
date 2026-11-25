@@ -8,7 +8,9 @@ import type { PluginOption } from 'vite'
  */
 
 export default function buildReleaseInfo(): PluginOption {
-    const version = pkg.version
+    // 릴리스 태그(v2.19.2 등)가 있으면 그 값을, 없으면 package.json 버전을 사용
+    const tag = process.env.GITHUB_REF_NAME
+    const version = tag && /^v\d/.test(tag) ? tag.replace(/^v/, '') : pkg.version
 
     return {
         name: 'build-release_info',
@@ -20,8 +22,8 @@ export default function buildReleaseInfo(): PluginOption {
                 )
                 await releaseInfoFile.writeFile(
                     JSON.stringify({
-                        project_name: 'mainsail',
-                        project_owner: 'mainsail-crew',
+                        project_name: 'Rolly_mainsail',
+                        project_owner: 'rollybot',
                         version: `v${version}`,
                     })
                 )
