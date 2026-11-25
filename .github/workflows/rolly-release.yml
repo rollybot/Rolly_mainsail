@@ -1,7 +1,7 @@
 name: Rolly Release
 on:
   push:
-    tags: ['v*-rolly*']
+    tags: ['v*']
 
 permissions:
   contents: write
